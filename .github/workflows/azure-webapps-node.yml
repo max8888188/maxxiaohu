@@ -1,0 +1,78 @@
+#当提交被推送到您的默认分支时，此工作流将构建node.js应用程序并将其推送到Azure Web App。
+#
+#此工作流假设您已经创建了目标Azure App Service web app。
+#有关说明，请参见https://docs . Microsoft . com/en-us/azure/app-service/quick start-nodejs？tabs = linux & pivots =开发-环境-cli
+#
+#要配置此工作流:
+#
+# 1.为您的Azure Web应用下载发布配置文件。您可以从Azure门户中您的Web应用的概述页面下载该文件。
+#了解更多信息:https://docs . Microsoft . com/en-us/azure/app-service/deploy-github-actions？tabs = applevel #生成-部署-凭证
+#
+# 2.在名为AZURE_WEBAPP_PUBLISH_PROFILE的存储库中创建一个秘密，将发布配置文件的内容粘贴为秘密的值。
+#有关获取发布配置文件的说明，请参见:https://docs . Microsoft . com/azure/app-service/deploy-github-actions # configure-the-github-secret
+#
+# 3.更改AZURE_WEBAPP_NAME的值。或者，更改下面的AZURE_WEBAPP_PACKAGE_PATH和NODE_VERSION环境变量。
+#
+#有关GitHub对Azure的操作的更多信息:https://github.com/Azure/Actions
+#有关Azure Web Apps部署操作的更多信息:https://github.com/Azure/webapps-deploy
+#获取更多部署到Azure的GitHub动作工作流的示例:https://github.com/Azure/actions-workflow-samples
+
+在:
+推:
+分支: [分支:[ "main" ]"主要" ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: AZURE _ web app _ NAME:your-app-NAME #将此设置为您的应用程序的名称# set this to your application's name
+  AZURE_WEBAPP_PACKAGE_PATH: '.'AZURE_WEBAPP_PACKAGE_PATH:“”#将此项设置为web应用程序项目的路径，默认为存储库根目录# set this to the path to your web app project, defaults to the repository root
+  NODE_VERSION: '20.x'NODE_VERSION: '20.x' #将此设置为要使用的节点版本# set this to the node version to use
+
+permissions:
+  contents: 内容:阅读
+
+jobs:
+  build:
+    runs-on: 运行:Ubuntu-最新版
+    steps:
+    - uses: - uses: actions/checkout@v4
+
+    - name: -名称:设置Node.js
+      uses: 用途:操作/设置-节点@v4
+      with:
+        node-version: 节点版本:${{ env。NODE_VERSION }}{{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: -名称:npm安装、构建和测试
+      run: |
+        npm install
+        npm run build --if-present
+        npm run test --if-present
+
+    - name: -名称:部署作业的上传工件
+      uses: 用途:操作/上传-工件@v3
+      with:
+        name: 名称:node-app
+        path: .
+
+  deploy:
+    permissions:
+      contents: 内容:无
+    runs-on: 运行:Ubuntu-最新版
+    needs: 需求:构建
+    environment:
+      name: 'Development'
+      url: URL:$ { { steps . deploy-to-web app . outputs . web app-URL } }{{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: - name:从构建作业下载工件
+      uses: 用途:操作/下载-工件@v3
+      with:
+        name: 名称:node-app
+
+    - name: 'Deploy to Azure WebApp'
+      id: id:部署到web应用程序
+      uses: 使用:azure/webapps-deploy@v2
+      with:
+        app-name: 应用程序名称:${{ env。AZURE_WEBAPP_NAME }}{{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: 发布个人资料:${{ secrets。AZURE_WEBAPP_PUBLISH_PROFILE }}{{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: 包:${{ env。AZURE_WEBAPP_PACKAGE_PATH }}{{ env.AZURE_WEBAPP_PACKAGE_PATH }}
